@@ -32,17 +32,17 @@
 #include "std_msgs/msg/float64_multi_array.hpp"
 
 // Kortex API
-#include "kortex_api/ActuatorConfigClientRpc.h"
-#include "kortex_api/BaseCyclicClientRpc.h"
-#include "kortex_api/BaseClientRpc.h"
-#include "kortex_api/RouterClient.h"
-#include "kortex_api/SessionManager.h"
-#include "kortex_api/TransportClientTcp.h"
-#include "kortex_api/TransportClientUdp.h"
-#include "kortex_api/ActuatorConfig.pb.h"
-#include "kortex_api/Base.pb.h"
-#include "kortex_api/BaseCyclic.pb.h"
-#include "kortex_api/Session.pb.h"
+#include "ActuatorConfigClientRpc.h"
+#include "BaseCyclicClientRpc.h"
+#include "BaseClientRpc.h"
+#include "RouterClient.h"
+#include "SessionManager.h"
+#include "TransportClientTcp.h"
+#include "TransportClientUdp.h"
+#include "ActuatorConfig.pb.h"
+#include "Base.pb.h"
+#include "BaseCyclic.pb.h"
+#include "Session.pb.h"
 
 namespace k_api = Kinova::Api;
 
