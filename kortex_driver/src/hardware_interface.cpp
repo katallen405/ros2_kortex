@@ -438,13 +438,7 @@ return_type KortexMultiInterfaceHardware::prepare_command_mode_switch(
       }
       if (key == joint.name + "/" + hardware_interface::HW_IF_EFFORT)
       {
-        continue;
-        // not supporting effort command interface
-        //              start_modes_.emplace_back(hardware_interface::HW_IF_EFFORT);
-        RCLCPP_ERROR(
-          LOGGER,
-          "KortexMultiInterfaceHardware does not support effort command "
-          "interface!");
+        stop_modes_.emplace_back(StopStartInterface::STOP_EFFORT);
       }
     }
     if (
@@ -489,11 +483,7 @@ return_type KortexMultiInterfaceHardware::prepare_command_mode_switch(
       }
       if (key == joint.name + "/" + hardware_interface::HW_IF_EFFORT)
       {
-        continue;
-        RCLCPP_ERROR(
-          LOGGER,
-          "KortexMultiInterfaceHardware does not support effort command "
-          "interface!");
+        start_modes_.emplace_back(StopStartInterface::START_EFFORT);
       }
     }
     if (
@@ -546,6 +536,21 @@ return_type KortexMultiInterfaceHardware::prepare_command_mode_switch(
   {
     start_joint_based_controller_ = true;
   }
+
+  if (
+   !start_modes_.empty() &&
+    (std::find(start_modes_.begin(), start_modes_.end(), StopStartInterface::START_EFFORT) !=
+    start_modes_.end()))
+{
+  start_joint_based_controller_ = true;
+}
+if (
+  !stop_modes_.empty() &&
+  (std::find(stop_modes_.begin(), stop_modes_.end(), StopStartInterface::STOP_EFFORT) !=
+   stop_modes_.end()))
+{
+  stop_joint_based_controller_ = true;
+}
   if (
     !start_modes_.empty() &&
     std::find(start_modes_.begin(), start_modes_.end(), StopStartInterface::START_TWIST) !=
@@ -640,11 +645,34 @@ return_type KortexMultiInterfaceHardware::perform_command_mode_switch(
     fault_controller_running_ = true;
   }
 
+if (stop_joint_based_controller_)
+{
+  joint_based_controller_running_ = false;
+  effort_controller_running_ = false;          // ← add
+  arm_commands_positions_ = arm_positions_;
+  arm_commands_velocities_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  arm_commands_efforts_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};  // ← add
+}
+
+if (start_joint_based_controller_)
+{
+  // ... existing code ...
+  arm_commands_efforts_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};  // ← add
+  // check if this start was triggered by effort interfaces
+  if (std::find(start_modes_.begin(), start_modes_.end(),
+      StopStartInterface::START_EFFORT) != start_modes_.end())
+  {
+    effort_controller_running_ = true;         // ← add
+  }
+  joint_based_controller_running_ = true;
+}
+
   // reset auxiliary switching booleans
   stop_joint_based_controller_ = stop_twist_controller_ = stop_fault_controller_ =
     stop_gripper_controller_ = false;
   start_joint_based_controller_ = start_twist_controller_ = start_fault_controller_ =
     start_gripper_controller_ = false;
+ 
 
   start_modes_.clear();
   stop_modes_.clear();
@@ -652,6 +680,27 @@ return_type KortexMultiInterfaceHardware::perform_command_mode_switch(
   block_write = false;
 
   return ret_val;
+}
+
+void KortexMultiInterfaceHardware::prepareCommands()
+{
+  for (size_t i = 0; i < actuator_count_; i++)
+  {
+    // Always mirror position back to suppress following-error watchdog
+    cmd_degrees_tmp_ = static_cast<float>(
+      KortexMathUtil::wrapDegreesFromZeroTo360(
+        KortexMathUtil::toDeg(arm_commands_positions_[i])));
+    base_command_.mutable_actuators(static_cast<int>(i))->set_position(cmd_degrees_tmp_);
+    base_command_.mutable_actuators(static_cast<int>(i))->set_command_id(
+      base_command_.frame_id());
+
+    // Send torque if effort controller is active
+    if (effort_controller_running_)
+    {
+      base_command_.mutable_actuators(static_cast<int>(i))->set_torque_joint(
+        static_cast<float>(arm_commands_efforts_[i]));
+    }
+  }
 }
 
 CallbackReturn KortexMultiInterfaceHardware::on_activate(
@@ -918,21 +967,6 @@ return_type KortexMultiInterfaceHardware::write(
   return return_type::OK;
 }
 
-void KortexMultiInterfaceHardware::prepareCommands()
-{  // update the command for each joint
-  for (size_t i = 0; i < actuator_count_; i++)
-  {
-    // set command per joint
-    cmd_degrees_tmp_ = static_cast<float>(
-      KortexMathUtil::wrapDegreesFromZeroTo360(KortexMathUtil::toDeg(arm_commands_positions_[i])));
-    cmd_vel_tmp_ = static_cast<float>(KortexMathUtil::toDeg(arm_commands_velocities_[i]));
-
-    base_command_.mutable_actuators(static_cast<int>(i))->set_position(cmd_degrees_tmp_);
-    // Velocity command interface not implemented properly in the kortex api
-    // base_command_.mutable_actuators(i)->set_velocity(cmd_vel_tmp_);
-    base_command_.mutable_actuators(static_cast<int>(i))->set_command_id(base_command_.frame_id());
-  }
-}
 
 void KortexMultiInterfaceHardware::sendJointCommands()
 {
@@ -1028,6 +1062,7 @@ void KortexMultiInterfaceHardware::sendTwistCommand()
   k_api_twist_->set_angular_z(static_cast<float>(twist_commands_[5]));
   base_.SendTwistCommand(k_api_twist_command_);
 }
+
 
 }  // namespace kortex_driver
 

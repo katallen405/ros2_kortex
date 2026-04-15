@@ -1,0 +1,12 @@
+<library path="kortex_effort_controller">
+  <class
+    name="kortex_effort_controller/KortexEffortController"
+    type="kortex_effort_controller::KortexEffortController"
+    base_class_type="controller_interface::ControllerInterface">
+    <description>
+      Joint effort (torque) controller for the Kinova Gen3 arm.
+      Subscribes to a std_msgs/Float64MultiArray topic and writes
+      torque commands to the hardware effort command interfaces.
+    </description>
+  </class>
+</library>

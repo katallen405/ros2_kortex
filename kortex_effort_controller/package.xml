@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>kortex_effort_controller</name>
+  <version>0.1.0</version>
+  <description>
+    Joint effort (torque) controller for the Kinova Gen3 arm.
+    Implements controller_interface::ControllerInterface, claims the
+    effort command interfaces exposed by kortex_driver, and subscribes
+    to a std_msgs/Float64MultiArray torque command topic.
+  </description>
+  <maintainer email="you@example.com">you</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>controller_interface</depend>
+  <depend>pluginlib</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend>
+  <depend>std_msgs</depend>
+
+  <!-- Runtime: kortex_driver must expose effort command interfaces -->
+  <exec_depend>kortex_driver</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

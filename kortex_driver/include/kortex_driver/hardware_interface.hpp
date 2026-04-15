@@ -75,6 +75,8 @@ enum class StopStartInterface
   START_TWIST,
   START_GRIPPER,
   START_FAULT_CTRL,
+  STOP_EFFORT,
+  START_EFFORT,
 };
 class KortexMultiInterfaceHardware : public hardware_interface::SystemInterface
 {
@@ -191,6 +193,8 @@ private:
   bool start_twist_controller_;
   bool start_gripper_controller_;
   bool start_fault_controller_;
+   bool effort_controller_running_{false};
+
 
   // first pass flag
   bool first_pass_;
