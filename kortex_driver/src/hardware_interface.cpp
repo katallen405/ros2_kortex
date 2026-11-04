@@ -22,6 +22,7 @@
  */
 //----------------------------------------------------------------------
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <exception>
@@ -592,7 +593,9 @@ return_type KortexMultiInterfaceHardware::perform_command_mode_switch(
   {
     joint_based_controller_running_ = false;
     arm_commands_positions_ = arm_positions_;
-    arm_commands_velocities_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    // fill, not assign: the exported command interfaces point into this
+    // vector, and a 6-element literal would shrink it on a 7-DOF arm
+    std::fill(arm_commands_velocities_.begin(), arm_commands_velocities_.end(), 0.0);
   }
   if (stop_twist_controller_)
   {
@@ -616,7 +619,7 @@ return_type KortexMultiInterfaceHardware::perform_command_mode_switch(
     arm_mode_ = k_api::Base::ServoingMode::LOW_LEVEL_SERVOING;
     twist_controller_running_ = false;
     arm_commands_positions_ = arm_positions_;
-    arm_commands_velocities_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    std::fill(arm_commands_velocities_.begin(), arm_commands_velocities_.end(), 0.0);
     joint_based_controller_running_ = true;
     // refresh feedback
     feedback_ = base_cyclic_.RefreshFeedback();
