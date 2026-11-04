@@ -43,6 +43,7 @@
 
 #include "kortex_driver/visibility_control.h"
 
+#include "ActuatorConfigClientRpc.h"
 #include "BaseClientRpc.h"
 #include "BaseCyclicClientRpc.h"
 #include "RouterClient.h"
@@ -71,10 +72,12 @@ enum class StopStartInterface
   STOP_TWIST,
   STOP_GRIPPER,
   STOP_FAULT_CTRL,
+  STOP_EFFORT,
   START_POS_VEL,
   START_TWIST,
   START_GRIPPER,
   START_FAULT_CTRL,
+  START_EFFORT,
 };
 class KortexMultiInterfaceHardware : public hardware_interface::SystemInterface
 {
@@ -127,6 +130,7 @@ private:
 
   // Control of the robot arm itself
   k_api::Base::BaseClient base_;
+  k_api::ActuatorConfig::ActuatorConfigClient actuator_config_;
   k_api::BaseCyclic::BaseCyclicClient base_cyclic_;
   k_api::BaseCyclic::Command base_command_;
   std::size_t actuator_count_;
@@ -192,6 +196,24 @@ private:
   bool start_gripper_controller_;
   bool start_fault_controller_;
 
+  // Effort (joint torque) control. Actuators are switched to TORQUE control
+  // mode only while an effort controller is active; any NaN effort command
+  // (e.g. kortex_effort_controller's stale-command watchdog) or actuator
+  // fault drops them back to POSITION and latches effort_faulted_ until the
+  // effort controller is restarted.
+  bool effort_controller_running_ = false;
+  bool start_effort_controller_ = false;
+  bool stop_effort_controller_ = false;
+  bool effort_faulted_ = false;
+  // Per-joint |torque| clamp [N*m] (hardware parameter torque_limit_nm).
+  std::vector<double> torque_limit_nm_;
+  // Multiplies measured torque on the effort state interface; Kinova's own
+  // examples treat measured torque as opposite in sign to the command.
+  double effort_state_sign_ = 1.0;
+  // Timeout for SetControlMode/SetServoingMode/ClearFaults on the effort
+  // paths; the E-STOP kills the link, so these must never block for long.
+  uint32_t effort_admin_timeout_ms_ = 300;
+
   // first pass flag
   bool first_pass_;
 
@@ -214,6 +236,12 @@ private:
   void incrementId();
   void sendJointCommands();
   void prepareCommands();
+  void refreshWithCommand();
+  void sendTorqueCommands(bool zero_torque);
+  bool enterTorqueMode();
+  void exitTorqueMode(bool to_single_level);
+  void setActuatorControlMode(k_api::ActuatorConfig::ControlMode mode);
+  bool effortFaultCheck();
   void sendGripperCommand(
     k_api::Base::ServoingMode arm_mode, double position, double velocity, double force);
 
