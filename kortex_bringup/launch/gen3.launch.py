@@ -107,6 +107,14 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument("launch_rviz", default_value="true", description="Launch RViz?")
     )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "effort_controller",
+            default_value="",
+            description="Effort (joint torque) controller to load inactive, e.g. "
+            "'effort_controller' (7dof). Empty: none.",
+        )
+    )
 
     # Initialize Arguments
     robot_type = LaunchConfiguration("robot_type")
@@ -139,6 +147,7 @@ def generate_launch_description():
             "gripper_joint_name": gripper_joint_name,
             "launch_rviz": launch_rviz,
             "controllers_file": controllers_file,
+            "effort_controller": LaunchConfiguration("effort_controller"),
             "description_file": "gen3.xacro",
         }.items(),
     )

@@ -17,6 +17,27 @@ controller_manager:
     fault_controller:
       type: picknik_reset_fault_controller/PicknikResetFaultController
 
+    effort_controller:
+      type: kortex_effort_controller/KortexEffortController
+
+# Joint torques on /effort_controller/commands (Float64MultiArray, N*m, joints
+# 1-7). NaN before the first command and once commands are older than
+# cmd_timeout_sec: the hardware then puts the arm back in position hold.
+# Exclusive with joint_trajectory_controller -- switch between them. Torque
+# mode has no gravity compensation; the publisher must supply it.
+effort_controller:
+  ros__parameters:
+    joints:
+      - joint_1
+      - joint_2
+      - joint_3
+      - joint_4
+      - joint_5
+      - joint_6
+      - joint_7
+    cmd_timeout_sec: 0.2
+    cmd_stale_warn_sec: 0.05
+
 joint_trajectory_controller:
   ros__parameters:
     joints:

@@ -53,6 +53,7 @@ def launch_setup(context, *args, **kwargs):
     robot_pos_controller = LaunchConfiguration("robot_pos_controller")
     robot_hand_controller = LaunchConfiguration("robot_hand_controller")
     fault_controller = LaunchConfiguration("fault_controller")
+    effort_controller = LaunchConfiguration("effort_controller")
     launch_rviz = LaunchConfiguration("launch_rviz")
     use_internal_bus_gripper_comm = LaunchConfiguration("use_internal_bus_gripper_comm")
     gripper_joint_name = LaunchConfiguration("gripper_joint_name")
@@ -207,6 +208,17 @@ def launch_setup(context, *args, **kwargs):
     # Conditionally add robot_hand_controller_spawner
     if start_robot_hand_controller:
         nodes_to_start.append(robot_hand_controller_spawner)
+    # Effort (joint torque) controller, loaded inactive: switch to it from
+    # joint_trajectory_controller with controller_manager's switch_controller.
+    # Only arms whose controllers file defines it (gen3 7dof).
+    if effort_controller.perform(context) != "":
+        nodes_to_start.append(
+            Node(
+                package="controller_manager",
+                executable="spawner",
+                arguments=[effort_controller, "--inactive", "-c", "/controller_manager"],
+            )
+        )
 
     return nodes_to_start
 
@@ -348,6 +360,14 @@ def generate_launch_description():
             "fault_controller",
             default_value="fault_controller",
             description="Name of the 'fault controller.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "effort_controller",
+            default_value="",
+            description="Effort (joint torque) controller to load inactive, e.g. "
+            "'effort_controller' (gen3 7dof). Empty: none.",
         )
     )
     declared_arguments.append(
