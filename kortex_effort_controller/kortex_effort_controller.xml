@@ -1,0 +1,10 @@
+<library path="kortex_effort_controller">
+  <class name="kortex_effort_controller/KortexEffortController"
+         type="kortex_effort_controller::KortexEffortController"
+         base_class_type="controller_interface::ControllerInterface">
+    <description>
+      Forwards Float64MultiArray joint torques to effort command interfaces; commands NaN
+      before the first message and once commands are older than cmd_timeout_sec.
+    </description>
+  </class>
+</library>
