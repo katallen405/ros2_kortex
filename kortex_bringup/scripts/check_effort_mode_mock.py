@@ -14,14 +14,39 @@ no TORQUE mode, so the hardware interface's effort code is not run (that's
 what TESTING_EFFORT_MODE.md on the real arm is for)."""
 import math
 import os
+import random
 import signal
 import subprocess
+import sys
 import time
 
-import rclpy
-from controller_manager_msgs.srv import ListControllers, SwitchController
-from sensor_msgs.msg import JointState
-from std_msgs.msg import Float64MultiArray
+# Private DDS domain for this script and the launch it starts: it runs its
+# own controller_manager, switches controllers and publishes torques on
+# /effort_controller/commands -- on the default domain that would reach a
+# real Gen3 stack on this machine. Set before rclpy is imported.
+os.environ["ROS_DOMAIN_ID"] = str(random.Random(os.getpid()).randint(60, 101))
+os.environ.pop("ROS_LOCALHOST_ONLY", None)
+os.environ["ROS_AUTOMATIC_DISCOVERY_RANGE"] = "LOCALHOST"
+
+import rclpy  # noqa: E402
+from controller_manager_msgs.srv import ListControllers, SwitchController  # noqa: E402
+from sensor_msgs.msg import JointState  # noqa: E402
+from std_msgs.msg import Float64MultiArray  # noqa: E402
+
+# Refuse to run if anything else is already visible on this domain.
+rclpy.init()
+_probe = rclpy.create_node("mock_check_isolation_probe")
+_end = time.monotonic() + 1.5
+_others = set()
+while time.monotonic() < _end and not _others:
+    rclpy.spin_once(_probe, timeout_sec=0.1)
+    _others = {n for n in _probe.get_node_names() if n != "mock_check_isolation_probe"}
+_probe.destroy_node()
+rclpy.shutdown()
+if _others:
+    print(f"Other ROS nodes visible on domain {os.environ['ROS_DOMAIN_ID']}: {sorted(_others)} "
+          "-- refusing to run.", file=sys.stderr)
+    sys.exit(1)
 
 launch = subprocess.Popen(
     ["ros2", "launch", "kortex_bringup", "gen3.launch.py", "robot_ip:=yyy.yyy.yyy.yyy",
